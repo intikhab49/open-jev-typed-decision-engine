@@ -129,6 +129,10 @@ The dataset ships **full annotator probability distributions**, not just argmax 
 
 So the loss is soft cross-entropy against the consensus distribution plus a Brier term — a proper scoring rule, which is what actually pushes probabilities toward honesty.
 
+It overshoots in the safe direction. The reliability curve sits **above** the diagonal at every bin: because the consensus targets are often flat (0.43 / 0.28 / 0.25 on a contested case), the model learns to emit flat distributions, so its top-1 confidence reads *lower* than its real accuracy. It is underconfident rather than overconfident — the direction you want if you are going to route on it, and one that a single temperature corrects.
+
+<img src="docs/charts/3_reliability.png" alt="Reliability diagram: predicted confidence against observed accuracy, with every bin sitting above the diagonal, showing the model is underconfident across the whole range. Before and after per-type temperature scaling are almost identical." width="70%">
+
 ---
 
 ## Quick start
@@ -182,6 +186,8 @@ Every script takes `--limit N` for a fast dry run, and `--config <workflow>` to 
 <img src="docs/charts/6_ensemble.png" alt="Left: validation accuracy against blend weight, peaking at w=0.60. Right: test accuracy per configuration - model 0.624, probe 0.670, ensemble 0.697, sharpened ensemble 0.697 at ECE 0.057 - against Jev's 0.727." width="100%">
 
 **Post-hoc temperature scaling had three different outcomes, so don't generalise from one.** A no-op on the undertrained model (temperatures ≈ 1.0, ECE slightly worse), a mild help on the overfit one, and decisive on the ensemble: **ECE 0.156 → 0.057 with accuracy untouched.** Mixing two disagreeing distributions flattens them, so the blend was badly *under*confident; sharpening in probability space can't move the argmax, so it's free or nothing. Before sharpening, the ≥0.90 band held 0.5% of traffic; after, 25.4%.
+
+<img src="docs/charts/5_per_type.png" alt="Accuracy and calibration error split by question type: noul 0.737, choice 0.630, score 0.524, with all three types calibrated well below Jev's 0.144 reference line." width="100%">
 
 **Single-annotator agreement is not a ceiling.** It's 0.659 here — what one human rater scores against the consensus. A model that always picks the consensus argmax scores 1.000, and Jev already exceeds it. The real limit is that **15.6% of test decisions are near-ties** (top two labels within 0.1), so the last few points of headline accuracy are mostly luck. Judge on calibration and coverage.
 
