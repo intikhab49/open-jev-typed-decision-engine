@@ -86,7 +86,7 @@ def _finish(fig, ax_or_axes, name, subtitle, outdir, show):
 
 
 # --- 1. scoreboard ------------------------------------------------------------
-def scoreboard(base, res, outdir, show):
+def scoreboard(base, res, outdir, show, ens=None):
     """Magnitude across methods -> horizontal bars, one series, no legend.
 
     Jev is a reference line rather than a bar: it is the thing being compared
@@ -99,7 +99,13 @@ def scoreboard(base, res, outdir, show):
         if base.get("frozen") is not None:
             rows.append(("Frozen encoder + logreg", base["frozen"], False))
     if res:
-        rows.append(("JevLite (fine-tuned)", res["accuracy"], True))
+        rows.append(("Fine-tuned model", res["accuracy"], False))
+    if ens:
+        # the headline configuration, so it is the one painted as ours
+        best = max(ens["test"].items(), key=lambda kv: kv[1]["accuracy"])
+        rows.append(("Ensemble (this repo)", best[1]["accuracy"], True))
+    elif rows:
+        rows[-1] = (rows[-1][0], rows[-1][1], True)
     if not rows:
         return
     rows.sort(key=lambda r: r[1])
@@ -122,8 +128,9 @@ def scoreboard(base, res, outdir, show):
     # Caption the rule above the bars: below the axis it lands in the tick
     # labels, and level with a bar it lands on that bar's value.
     head = len(rows) - 0.5 + 0.80
-    ax.annotate(f"TypeSafe Jev {JEV_ACC:.3f}", xy=(JEV_ACC, len(rows) - 0.5 + 0.12),
-                ha="center", va="bottom", color=CRITICAL, fontsize=10,
+    ax.annotate(f"TypeSafe Jev {JEV_ACC:.3f}  ", xy=(JEV_ACC, len(rows) - 0.5 + 0.12),
+                xytext=(-4, 0), textcoords="offset points",
+                ha="right", va="bottom", color=CRITICAL, fontsize=10,
                 fontweight="bold")
 
     ax.set_yticks(list(ys), [n for n, _, _ in rows], color=INK_2, fontsize=11)
@@ -135,7 +142,8 @@ def scoreboard(base, res, outdir, show):
     ax.set_title("Accuracy vs TypeSafe Jev")
     ax.grid(axis="y", visible=False)
     _finish(fig, ax, "1_scoreboard.png",
-            "Blue is this model. Grey bars need no training at all.", outdir, show)
+            "Blue is the shipped configuration. Grey needs little or no training.",
+            outdir, show)
 
 
 # --- 2. training curve --------------------------------------------------------
@@ -304,19 +312,26 @@ def ensemble(ens, outdir, show):
 
     names = list(ens["test"])
     vals = [ens["test"][n]["accuracy"] for n in names]
-    best = max(range(len(vals)), key=lambda i: vals[i])
+    eces = [ens["test"][n]["ece"] for n in names]
+    # Ties on accuracy break toward the better-calibrated configuration, which
+    # is the one actually shipped - sharpening moves ECE, never the argmax.
+    best = max(range(len(vals)), key=lambda i: (vals[i], -eces[i]))
     colors = [S1 if i == best else BASELINE for i in range(len(names))]
     a2.bar(range(len(names)), vals, width=0.58, color=colors)
+    # Labels sit inside the bars: above them they collide with the Jev rule,
+    # which on this chart runs only a hair above the tallest bar.
     for i, v in enumerate(vals):
-        a2.text(i, v + 0.012, f"{v:.3f}", ha="center", fontsize=10,
-                color=INK if i == best else INK_2,
+        a2.text(i, v - 0.028, f"{v:.3f}", ha="center", va="top", fontsize=10,
+                color=SURFACE if i == best else INK_2,
                 fontweight="bold" if i == best else "normal")
+        a2.text(i, v - 0.075, f"ECE {eces[i]:.3f}", ha="center", va="top",
+                fontsize=8, color=SURFACE if i == best else MUTED)
     a2.axhline(JEV_ACC, color=CRITICAL, linewidth=2, linestyle=(0, (5, 3)))
     hline_label(a2, JEV_ACC, f"Jev {JEV_ACC:.3f}")
     a2.set_xticks(range(len(names)),
                   [n.strip().replace(" ", chr(10)) for n in names],
                   color=INK_2, fontsize=9)
-    a2.set_ylim(0, max(max(vals), JEV_ACC) * 1.22)
+    a2.set_ylim(0, max(max(vals), JEV_ACC) * 1.16)
     a2.set_title("Test accuracy")
     a2.grid(axis="x", visible=False)
 
@@ -346,7 +361,7 @@ def main(outdir="plots", show=False):
               "cases (--limit was set) - not comparable to Jev's published number.")
 
     print("charts written:")
-    scoreboard(base, res, outdir, show)
+    scoreboard(base, res, outdir, show, ens)
     training(hist, outdir, show)
     reliability(res, outdir, show)
     coverage(res, outdir, show)

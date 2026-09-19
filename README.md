@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/header.svg" alt="Open Jev - a typed decision engine you can train for free. 0.697 accuracy against TypeSafe Jev's 0.727, 2.5x better calibrated, 4x faster, zero cost." width="100%">
+
 # Open Jev — a typed decision engine you can train for free
 
 **A 150M encoder that answers arbitrary typed questions about a state in one forward pass, with calibrated confidence. 0.03 behind TypeSafe Jev on its own benchmark, 2.5× better calibrated, 4× faster, $0.**
@@ -20,6 +22,8 @@
 [TypeSafe AI's **Jev**](https://www.mindstudio.ai/blog/jev-system-one-model-launch) (launched 2026-09-15) is a "System One" model: it never writes prose, it only **decides, classifies, routes and scores**. You hand it a state plus a set of typed questions and it answers all of them in one non-autoregressive pass, with a confidence on each. $0.042/1M input, output tokens free, ~239 ms per call.
 
 This repo reproduces that interface with an open 150M encoder you can train on a free Colab T4 in under 30 minutes, then run locally — or in a browser — for nothing.
+
+> **TypeSafe does not publish Jev's parameter count.** This model is 150M. Their [published specs](https://docs.typesafe.ai/models) give pricing, rate limits and a 64k context window, but no model size — and their launch FAQ lists *"Is Jev just a smaller LLM?"* without answering it. Any size comparison you see, including here, is inference from price and latency rather than a disclosed figure.
 
 Three primitives, matching theirs:
 
@@ -62,6 +66,8 @@ Measured on the official 400-case test split of [`LocalLLaMA/typed-decisions`](h
 
 **0.03 behind Jev on accuracy. 2.5× better calibrated. ~60 ms per case locally against their 239 ms p50. Free, offline, open weights.**
 
+<img src="docs/charts/1_scoreboard.png" alt="Bar chart of accuracy on the typed-decisions test split: majority class 0.483, fine-tuned model 0.620, single annotator 0.659, frozen probe 0.670, this repo's ensemble 0.697, against a dashed reference line at TypeSafe Jev's 0.727." width="100%">
+
 ### Can you route on the confidence?
 
 This is the question that decides whether a decision model is usable. Ensemble, on test:
@@ -75,9 +81,30 @@ This is the question that decides whether a decision model is usable. Ensemble, 
 
 A quarter of all decisions at 91.5% accuracy is a shippable policy: autoroute that band, escalate the rest.
 
+<img src="docs/charts/4_coverage.png" alt="Line chart of accuracy against coverage as the confidence threshold rises, climbing from 0.73 at full coverage to 0.92 on the most confident quarter of decisions." width="100%">
+
 ---
 
 ## How it works
+
+```mermaid
+flowchart LR
+    S["state<br/><i>log · ticket · trace · diff</i>"] --> SEQ
+    Q["typed questions<br/><i>supplied per request</i>"] --> SEQ
+    SEQ["one sequence<br/>state + &lt;&lt;q&gt;&gt; question + &lt;&lt;l&gt;&gt; label …"]
+    SEQ --> ENC["ModernBERT-base<br/>150M · one forward pass"]
+    ENC --> H["Linear(d, 1)<br/>read at every &lt;&lt;l&gt;&gt; marker"]
+    H --> SM["softmax within<br/>each question"]
+    SM --> T["per-type temperature"]
+    T --> OUT["label + calibrated confidence<br/>for every question"]
+
+    style ENC fill:#2a78d6,stroke:#1c5cab,color:#fff
+    style OUT fill:#1baf7a,stroke:#158a60,color:#fff
+    style SEQ fill:#f0efec,stroke:#c3c2b7,color:#0b0b0b
+    style H fill:#f0efec,stroke:#c3c2b7,color:#0b0b0b
+    style SM fill:#f0efec,stroke:#c3c2b7,color:#0b0b0b
+    style T fill:#f0efec,stroke:#c3c2b7,color:#0b0b0b
+```
 
 ### The label-embedding head
 
@@ -149,6 +176,10 @@ Every script takes `--limit N` for a fast dry run, and `--config <workflow>` to 
 **A frozen encoder + logistic regression scores 0.670 — beating the fine-tuned model's 0.6240.** No training at all. This reproduces the [independent Banking77 finding](https://github.com/ickma2311/jev-baselines-eval) where the same baseline beat Jev by 10 points at 44× the speed. `01_ceiling.py` runs it first so you know what you're up against. If your fine-tune can't clear it, ship the probe.
 
 **The accuracy gap was undertraining — up to a point.** 6 epochs gave 0.568; 20 epochs with early stopping (best at epoch 9) gave 0.6195. Past that, training loss kept falling while validation flatlined. The binding constraint is **1,016 training cases, not model size or epochs** — which is why reaching for a bigger encoder first is the wrong instinct here.
+
+<img src="docs/charts/2_training.png" alt="Two panels: training loss falling steadily from 1.40 to 0.93 across 15 epochs, and validation accuracy rising to a best of 0.653 at epoch 9 then flattening - the signature of memorisation rather than learning." width="100%">
+
+<img src="docs/charts/6_ensemble.png" alt="Left: validation accuracy against blend weight, peaking at w=0.60. Right: test accuracy per configuration - model 0.624, probe 0.670, ensemble 0.697, sharpened ensemble 0.697 at ECE 0.057 - against Jev's 0.727." width="100%">
 
 **Post-hoc temperature scaling had three different outcomes, so don't generalise from one.** A no-op on the undertrained model (temperatures ≈ 1.0, ECE slightly worse), a mild help on the overfit one, and decisive on the ensemble: **ECE 0.156 → 0.057 with accuracy untouched.** Mixing two disagreeing distributions flattens them, so the blend was badly *under*confident; sharpening in probability space can't move the argmax, so it's free or nothing. Before sharpening, the ≥0.90 band held 0.5% of traffic; after, 25.4%.
 

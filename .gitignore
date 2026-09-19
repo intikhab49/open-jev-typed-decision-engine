@@ -24,3 +24,6 @@ venv/
 
 # generated for a live Colab session; regenerate with make_patch_cell.py
 patch_cell.txt
+
+# run artifacts are gitignored, but the committed copies under docs/ are not
+!docs/charts/*.png

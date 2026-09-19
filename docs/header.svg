@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340"
+     viewBox="0 0 1200 340" role="img"
+     aria-label="Open Jev: a typed decision engine you can train for free.
+     0.697 accuracy against TypeSafe Jev's 0.727, 2.5x better calibrated,
+     4x faster, zero cost.">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFB020"/>
+      <stop offset="55%" stop-color="#FF6B4A"/>
+      <stop offset="100%" stop-color="#FF4E88"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF6B4A" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0A0A14" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0 L0 0 0 28" fill="none" stroke="#FFFFFF" stroke-opacity="0.04"
+            stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="340" fill="#0A0A14"/>
+  <rect width="1200" height="340" fill="url(#grid)"/>
+  <circle cx="1040" cy="70" r="240" fill="url(#fade)"/>
+
+  <text x="64" y="86" font-family="ui-monospace,SFMono-Regular,Menlo,monospace"
+        font-size="13" letter-spacing="3.5" fill="#A3E635">SYSTEM ONE MODEL
+        &#183; OPEN REPRODUCTION</text>
+
+  <text x="60" y="164" font-family="Georgia,'Times New Roman',serif"
+        font-size="68" font-weight="700" fill="url(#grad)">Open Jev</text>
+
+  <text x="64" y="204" font-family="-apple-system,Segoe UI,Helvetica,sans-serif"
+        font-size="19" fill="#E8E8F0">A typed decision engine you can train
+        for free.</text>
+  <text x="64" y="232" font-family="-apple-system,Segoe UI,Helvetica,sans-serif"
+        font-size="19" fill="#8B8BA7">State + typed questions &#8594; one pass
+        &#8594; calibrated answers.</text>
+
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">
+    <rect x="64" y="262" width="150" height="28" rx="14" fill="none"
+          stroke="#FFB020" stroke-opacity="0.55"/>
+    <text x="139" y="281" fill="#FFB020" text-anchor="middle">150M PARAMS</text>
+
+    <rect x="226" y="262" width="164" height="28" rx="14" fill="none"
+          stroke="#A3E635" stroke-opacity="0.55"/>
+    <text x="308" y="281" fill="#A3E635" text-anchor="middle">2.5&#215; CALIBRATION</text>
+
+    <rect x="402" y="262" width="132" height="28" rx="14" fill="none"
+          stroke="#5B9BFF" stroke-opacity="0.55"/>
+    <text x="468" y="281" fill="#5B9BFF" text-anchor="middle">4&#215; FASTER</text>
+
+    <rect x="546" y="262" width="108" height="28" rx="14" fill="none"
+          stroke="#FF4E88" stroke-opacity="0.55"/>
+    <text x="600" y="281" fill="#FF4E88" text-anchor="middle">$0 / CALL</text>
+  </g>
+
+  <text x="820" y="74" font-family="ui-monospace,SFMono-Regular,Menlo,monospace"
+        font-size="11" letter-spacing="2" fill="#8B8BA7">ACCURACY &#183;
+        typed-decisions, 400 cases</text>
+  <g>
+    <rect x="820" y="92.0" width="123.8" height="28.0" rx="3" fill="#8B8BA7" opacity="0.35"/>
+    <text x="953.8" y="110.0" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" fill="#8B8BA7" font-weight="400">0.483  majority</text>
+    <rect x="820" y="134.0" width="159.9" height="28.0" rx="3" fill="#8B8BA7" opacity="0.35"/>
+    <text x="989.9" y="152.0" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" fill="#8B8BA7" font-weight="400">0.624  fine-tune</text>
+    <rect x="820" y="176.0" width="171.7" height="28.0" rx="3" fill="#8B8BA7" opacity="0.35"/>
+    <text x="1001.7" y="194.0" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" fill="#8B8BA7" font-weight="400">0.670  probe</text>
+    <rect x="820" y="218.0" width="178.6" height="28.0" rx="3" fill="url(#grad)" opacity="1"/>
+    <text x="1008.6" y="236.0" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" fill="#FFFFFF" font-weight="700">0.697  ours</text>
+    <rect x="820" y="260.0" width="186.3" height="28.0" rx="3" fill="#FF6B4A" opacity="0.9"/>
+    <text x="1016.3" y="278.0" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" fill="#8B8BA7" font-weight="400">0.727  Jev</text>
+  </g>
+</svg>
