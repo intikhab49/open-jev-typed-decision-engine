@@ -62,9 +62,15 @@ class Question(dict):
     """
 
     @staticmethod
-    def noul(instructions: str, true_desc: str, false_desc: str) -> dict:
-        return {"type": "noul", "instructions": instructions,
-                "criteria": {"true": true_desc, "false": false_desc}}
+    def noul(instructions: str, true_desc: str = None,
+             false_desc: str = None) -> dict:
+        """Descriptions are optional, matching the data: a bare noul carries no
+        criteria at all and the instruction is the statement being judged."""
+        q = {"type": "noul", "instructions": instructions}
+        if true_desc is not None or false_desc is not None:
+            q["criteria"] = {"true": true_desc or "The statement holds.",
+                             "false": false_desc or "The statement does not hold."}
+        return q
 
     @staticmethod
     def choice(instructions: str, criteria: dict[str, str]) -> dict:

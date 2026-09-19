@@ -114,7 +114,9 @@ def encode(row, tok, max_len, qid, lid, with_gold=True):
         "target": target,
         "qtype": qtypes,
         "qnames": qnames,
-        "gold_label": [row["gold"][q]["label"] for q in qnames] if with_gold else [],
+        # .get chain: rows built for inference carry no gold at all, and
+        # predict_distributions used to die on them with a bare KeyError.
+        "gold_label": [row.get("gold", {}).get(q, {}).get("label") for q in qnames],
         "labels": [[l for l, _ in iter_labels(row["questions"][q])] for q in qnames],
     }
 
