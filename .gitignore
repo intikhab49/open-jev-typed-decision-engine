@@ -1,0 +1,26 @@
+# trained artifacts - 600 MB, regenerate with 02_train.py
+*.pt
+*.onnx
+*.onnx.data
+*.int8.onnx
+
+# run outputs - regenerate by rerunning the pipeline
+baselines.json
+history.json
+results.json
+ensemble.json
+plots/
+plots-*/
+
+# local
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+*.log
+.DS_Store
+
+# generated for a live Colab session; regenerate with make_patch_cell.py
+patch_cell.txt

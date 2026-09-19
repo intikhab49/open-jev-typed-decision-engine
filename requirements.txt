@@ -1,0 +1,13 @@
+torch>=2.4
+transformers>=4.48          # ModernBERT support
+datasets>=2.20              # optional: td_data falls back to plain HTTP
+scikit-learn>=1.4           # frozen-encoder baseline in 01_ceiling.py
+numpy
+matplotlib                  # plots.py
+# serving
+fastapi
+uvicorn
+# 06_export_onnx.py only
+onnx
+onnxruntime
+onnxscript                  # required by torch>=2.6 for torch.onnx.export
