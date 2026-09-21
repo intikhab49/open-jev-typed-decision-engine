@@ -85,6 +85,9 @@ if __name__ == "__main__":
     p.add_argument("--demo", action="store_true")
     p.add_argument("--serve", action="store_true")
     p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--host", default="127.0.0.1",
+                   help="interface to bind (default loopback - /decide has no "
+                        "auth, so only widen this on a network you trust)")
     a = p.parse_args()
     e = load(a.ckpt)
     if e["temps"]:
@@ -107,7 +110,10 @@ if __name__ == "__main__":
         def _decide(r: Req):
             return decide(r.state, r.questions, r.calibrated)
 
-        uvicorn.run(app, host="0.0.0.0", port=a.port)
+        if a.host not in ("127.0.0.1", "localhost", "::1"):
+            print(f"  WARNING: binding {a.host} - /decide is unauthenticated and "
+                  f"anything that can reach this port can query the model.")
+        uvicorn.run(app, host=a.host, port=a.port)
     else:
         import time
         t0 = time.perf_counter()

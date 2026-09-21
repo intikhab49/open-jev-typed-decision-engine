@@ -104,12 +104,30 @@ if __name__ == "__main__":
     cal = evaluate(model, dl, dev, temp=True)
     acc = show(cal, "calibrated (per-type temperature)")
 
-    print(f"\n=== vs Jev 1.13.0 ===")
-    print(f"  JevLite  {acc:.4f}        Jev  {JEV_ACC:.4f}"
-          f"   ->  {'AHEAD' if acc > JEV_ACC else 'behind'} by {abs(acc-JEV_ACC):.4f}")
     my_ece = ece_confidence(cal["conf"], cal["correct"])
-    print(f"  JevLite ECE {my_ece:.4f}    Jev ECE {JEV_ECE_REPORTED:.4f} (reported)"
-          f"   ->  {'AHEAD' if my_ece < JEV_ECE_REPORTED else 'behind'}")
+
+    # Jev's 0.727 / 0.144 are full-split figures over all four configs. A subset run
+    # is a different distribution, so don't print a delta someone could quote out of
+    # context - say what the run actually was instead.
+    full_split = a.config == "all" and a.limit is None
+    if full_split:
+        print(f"\n=== vs Jev 1.13.0 ===")
+        print(f"  JevLite  {acc:.4f}        Jev  {JEV_ACC:.4f}"
+              f"   ->  {'AHEAD' if acc > JEV_ACC else 'behind'} by {abs(acc-JEV_ACC):.4f}")
+        print(f"  JevLite ECE {my_ece:.4f}    Jev ECE {JEV_ECE_REPORTED:.4f} (reported)"
+              f"   ->  {'AHEAD' if my_ece < JEV_ECE_REPORTED else 'behind'}")
+    else:
+        scope = []
+        if a.config != "all":
+            scope.append(f"--config {a.config}")
+        if a.limit is not None:
+            scope.append(f"--limit {a.limit}")
+        print(f"\n=== vs Jev 1.13.0: subset run, comparison suppressed ===")
+        flags = " ".join(scope)
+        print(f"  This run covered {cal['n_cases']} cases ({flags}).")
+        print(f"  Jev's {JEV_ACC:.4f} / {JEV_ECE_REPORTED:.4f} are full-split figures over all 400")
+        print(f"  test cases and all four configs - not a like-for-like baseline here.")
+        print(f"  Run `python 04_eval.py` with no flags for the comparable number.")
     n_dec = len(cal["correct"])
     print(f"\n  {cal['dt']:.2f}s for {cal['n_cases']} cases / {n_dec} decisions"
           f"  ->  {cal['dt']/cal['n_cases']*1000:.1f} ms/case on {dev}, no network")
@@ -131,7 +149,7 @@ if __name__ == "__main__":
         "tvd": tvd(cal["P"], cal["T"], cal["M"], cal["G"], cal["P"].size(1)),
         "ms_per_case": cal["dt"] / cal["n_cases"] * 1000,
         "n_cases": cal["n_cases"], "n_decisions": n_dec, "device": dev,
-        "config": a.config,
+        "config": a.config, "limit": a.limit, "full_split": full_split,
         "per_type": [
             {"type": name,
              "accuracy": float(cal["correct"][cal["qtype"] == i].float().mean()),
