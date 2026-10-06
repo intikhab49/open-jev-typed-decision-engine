@@ -10,6 +10,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Colab](https://img.shields.io/badge/train%20on-free%20T4-eb6834?style=for-the-badge&logo=googlecolab&logoColor=white)](jevlite_colab.ipynb)
 [![Benchmark](https://img.shields.io/badge/benchmark-typed--decisions-1baf7a?style=for-the-badge)](https://huggingface.co/datasets/LocalLLaMA/typed-decisions)
+[![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-Open%20Jev%20Action-24292f?style=for-the-badge&logo=github&logoColor=white)](https://github.com/marketplace/actions/open-jev-typed-decisions)
 
 [Results](#results) · [GitHub Action](#github-action) · [How it works](#how-it-works) · [Quick start](#quick-start) · [What we learned](#what-the-runs-actually-proved) · [Limitations](#limitations)
 
@@ -87,7 +88,7 @@ A quarter of all decisions at 91.5% accuracy is a shippable policy: autoroute th
 
 ## GitHub Action
 
-Run typed decisions inside a workflow, on the runner's CPU: no API key, no per-call cost, and the state never leaves the runner.
+On the [GitHub Marketplace](https://github.com/marketplace/actions/open-jev-typed-decisions). Run typed decisions inside a workflow, on the runner's CPU: no API key, no per-call cost, and the state never leaves the runner.
 
 ```yaml
 - uses: intikhab49/open-jev-typed-decision-engine@v1
