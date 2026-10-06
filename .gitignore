@@ -27,3 +27,6 @@ patch_cell.txt
 
 # run artifacts are gitignored, but the committed copies under docs/ are not
 !docs/charts/*.png
+
+# Action build output - attached to the model release by build-model.yml
+dist/
