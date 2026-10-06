@@ -1,0 +1,91 @@
+name: Open Jev Typed Decisions
+description: Typed decisions (yes/no, choice, score) on any JSON or text, on the runner CPU. No API key, no per-call cost.
+author: intikhab49
+
+branding:
+  icon: check-square
+  color: blue
+
+inputs:
+  state:
+    description: The thing to decide about - JSON or plain text. Give this or state-file.
+    required: false
+    default: ""
+  state-file:
+    description: Path to a file holding the state (JSON or text). Give this or state.
+    required: false
+    default: ""
+  workflow:
+    description: >-
+      Built-in workflow, answered by the 0.697 ensemble. One of agent_trace_observability,
+      customer_service, invoice_processing, security_incidents.
+    required: false
+    default: ""
+  questions:
+    description: >-
+      Your own typed questions as YAML or JSON, name -> {type, instructions, criteria}.
+      Answered by the fine-tuned model alone (0.62).
+    required: false
+    default: ""
+  questions-file:
+    description: Path to a YAML or JSON file of your own questions, instead of questions.
+    required: false
+    default: ""
+  model-release:
+    description: Release tag the model files are downloaded from. Checked against action/SHA256SUMS.
+    required: false
+    default: model-v1
+
+outputs:
+  result:
+    description: >-
+      JSON - {"workflow": ..., "decisions": {name: {answer, confidence, type, mode, distribution}}}.
+      mode is "ensemble" for built-in questions and "model" for your own.
+    value: ${{ steps.decide.outputs.result }}
+  result-file:
+    description: Path to the same JSON on disk.
+    value: ${{ steps.decide.outputs.result-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up runtime
+      id: setup
+      shell: bash
+      run: |
+        PY="$(command -v python3 || command -v python)"
+        VENV="$RUNNER_TEMP/open-jev-venv"
+        "$PY" -m venv "$VENV"
+        if [ -x "$VENV/bin/python" ]; then VPY="$VENV/bin/python"; else VPY="$VENV/Scripts/python.exe"; fi
+        "$VPY" -m pip install -q --disable-pip-version-check -r "$GITHUB_ACTION_PATH/action/requirements.txt"
+        echo "python=$VPY" >> "$GITHUB_OUTPUT"
+        echo "model-dir=$RUNNER_TEMP/open-jev-model" >> "$GITHUB_OUTPUT"
+
+    - name: Cache model files
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.setup.outputs.model-dir }}
+        key: open-jev-${{ runner.os }}-${{ inputs.model-release }}
+
+    - name: Fetch and verify model files
+      shell: bash
+      env:
+        VPY: ${{ steps.setup.outputs.python }}
+        JEV_MODEL_DIR: ${{ steps.setup.outputs.model-dir }}
+        JEV_MODEL_RELEASE: ${{ inputs.model-release }}
+      run: '"$VPY" "$GITHUB_ACTION_PATH/action/jev_action.py" fetch'
+
+    - name: Decide
+      id: decide
+      shell: bash
+      env:
+        VPY: ${{ steps.setup.outputs.python }}
+        JEV_MODEL_DIR: ${{ steps.setup.outputs.model-dir }}
+        JEV_STATE: ${{ inputs.state }}
+        JEV_STATE_FILE: ${{ inputs.state-file }}
+        JEV_WORKFLOW: ${{ inputs.workflow }}
+        JEV_QUESTIONS: ${{ inputs.questions }}
+        JEV_QUESTIONS_FILE: ${{ inputs.questions-file }}
+      run: |
+        export JEV_RESULT_FILE="$RUNNER_TEMP/open-jev-result.json"
+        "$VPY" "$GITHUB_ACTION_PATH/action/jev_action.py" run

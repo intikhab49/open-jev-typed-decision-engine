@@ -1,0 +1,75 @@
+name: action-selftest
+
+# Runs the Action exactly as a user would (uses: ./), both paths: a built-in
+# workflow (ensemble) and custom questions (model only), then checks the output
+# shape. The first run downloads ~1.2 GB of model files; later runs hit the cache.
+
+on:
+  push:
+    branches: [main]
+    paths: [action.yml, "action/**", typed_schema.py, .github/workflows/action-selftest.yml]
+  pull_request:
+    paths: [action.yml, "action/**", typed_schema.py, .github/workflows/action-selftest.yml]
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Built-in workflow
+        id: builtin
+        uses: ./
+        with:
+          workflow: security_incidents
+          state: |
+            {"alert": "Impossible travel", "user": "finance-admin",
+             "logins": [{"city": "Lahore", "at": "09:02"}, {"city": "Toronto", "at": "09:15"}],
+             "mfa": "push approved twice in 40 seconds", "new_device": true}
+
+      - name: Custom questions
+        id: custom
+        uses: ./
+        with:
+          state: |
+            Title: App crashes when I upload a PNG over 10 MB
+            Body: Steps: open editor, drag a 12 MB PNG, the tab freezes then reloads.
+            Expected an error message. Chrome 129, Windows 11.
+          questions: |
+            kind:
+              type: choice
+              instructions: What kind of issue is this?
+              criteria:
+                bug: Something that used to work, or should work, is broken.
+                feature: A request for new behaviour.
+                question: The reporter is asking how to do something.
+            has_repro:
+              type: noul
+              instructions: The issue gives steps to reproduce the problem.
+            severity:
+              type: score
+              instructions: How severe is the impact on users?
+              criteria: [Cosmetic, Annoying but has a workaround, Blocks a common task, Data loss or security]
+
+      - name: Check outputs
+        env:
+          BUILTIN: ${{ steps.builtin.outputs.result }}
+          CUSTOM: ${{ steps.custom.outputs.result }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          b, c = json.loads(os.environ["BUILTIN"]), json.loads(os.environ["CUSTOM"])
+          assert b["workflow"] == "security_incidents" and len(b["decisions"]) == 5, b
+          assert set(c["decisions"]) == {"kind", "has_repro", "severity"}, c
+          for res, mode in ((b, "ensemble"), (c, "model")):
+              for name, d in res["decisions"].items():
+                  assert d["mode"] == mode, (name, d)
+                  assert d["answer"] in d["distribution"], (name, d)
+                  assert abs(sum(d["distribution"].values()) - 1) < 1e-3, (name, d)
+                  assert 0 < d["confidence"] <= 1, (name, d)
+          assert c["decisions"]["kind"]["answer"] in {"bug", "feature", "question"}
+          print("built-in:", {k: v["answer"] for k, v in b["decisions"].items()})
+          print("custom:  ", {k: v["answer"] for k, v in c["decisions"].items()})
+          PY

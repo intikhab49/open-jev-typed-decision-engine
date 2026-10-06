@@ -11,7 +11,7 @@
 [![Colab](https://img.shields.io/badge/train%20on-free%20T4-eb6834?style=for-the-badge&logo=googlecolab&logoColor=white)](jevlite_colab.ipynb)
 [![Benchmark](https://img.shields.io/badge/benchmark-typed--decisions-1baf7a?style=for-the-badge)](https://huggingface.co/datasets/LocalLLaMA/typed-decisions)
 
-[Results](#results) · [How it works](#how-it-works) · [Quick start](#quick-start) · [What we learned](#what-the-runs-actually-proved) · [Limitations](#limitations)
+[Results](#results) · [GitHub Action](#github-action) · [How it works](#how-it-works) · [Quick start](#quick-start) · [What we learned](#what-the-runs-actually-proved) · [Limitations](#limitations)
 
 </div>
 
@@ -82,6 +82,75 @@ This is the question that decides whether a decision model is usable. Ensemble, 
 A quarter of all decisions at 91.5% accuracy is a shippable policy: autoroute that band, escalate the rest.
 
 <img src="docs/charts/4_coverage.png" alt="Line chart of accuracy against coverage as the confidence threshold rises, climbing from 0.73 at full coverage to 0.92 on the most confident quarter of decisions." width="100%">
+
+---
+
+## GitHub Action
+
+Run typed decisions inside a workflow, on the runner's CPU: no API key, no per-call cost, and the state never leaves the runner.
+
+```yaml
+- uses: intikhab49/open-jev-typed-decision-engine@v1
+  id: jev
+  with:
+    workflow: security_incidents      # built-in: answered by the 0.697 ensemble
+    state-file: alert.json            # or state: <JSON or text>
+
+- if: >-
+    fromJSON(steps.jev.outputs.result).decisions.disposition.answer == 'contain' &&
+    fromJSON(steps.jev.outputs.result).decisions.disposition.confidence >= 0.9
+  run: ./page-oncall.sh
+```
+
+Every answer says which path produced it, and the two are not equally good:
+
+| you give | path | accuracy | ECE ↓ |
+|---|---|---|---|
+| `workflow:` — one of the four built-ins below | ensemble (`mode: ensemble`) | **0.6970** | 0.057 |
+| `questions:` — your own typed questions | fine-tuned model alone (`mode: model`) | 0.6235 | 0.104 |
+
+Both rows are the full 400-case test split replayed through the Action's own runtime (onnxruntime + numpy, no torch) by [`action/verify.py`](action/verify.py) — numbers in [`action/measured.json`](action/measured.json). Both are in-distribution: the test split comes from the same synthetic dataset the model and probes were trained on, and its gold labels are LLM consensus. On your real alerts or tickets, accuracy is unmeasured.
+
+**Read the second row carefully.** 0.6235 is measured on the dataset's 20 questions, which the model was trained on. A question unlike them is **unmeasured**, and it can be confidently wrong: on its first outing it called a bug report with numbered repro steps a `question`, with `has_repro: false`. Use a built-in where one fits; for your own questions, check outputs on real cases and gate on `confidence` before automating anything.
+
+| built-in `workflow` | questions (labels) |
+|---|---|
+| `security_incidents` | `disposition` (close_benign · contain · investigate · monitor), `severity` (0–4), `urgency` (0–3), `true_positive`, `credential_compromise` |
+| `agent_trace_observability` | `action` (continue · human_review · observe · stop), `outcome` (failure · harmful · partial · success), `risk` (0–3), `urgency` (0–3), `needs_review` |
+| `customer_service` | `action` (answer_directly · close_no_action · escalate_to_human · execute_refund · request_information), `category` (account · billing · delivery · refund · technical), `churn_risk` (0–3), `urgency` (0–3), `needs_human` |
+| `invoice_processing` | `disposition` (approve · hold · manual_review · reject), `discrepancy_severity` (0–3), `urgency` (0–3), `duplicate`, `matches_order` |
+
+Full question wording is in `presets.json` on the [model release](https://github.com/intikhab49/open-jev-typed-decision-engine/releases/tag/model-v1). Unlabelled questions are `noul` (true/false).
+
+Your own questions, same format as the Python API:
+
+```yaml
+- uses: intikhab49/open-jev-typed-decision-engine@v1
+  id: triage
+  with:
+    state: ${{ github.event.issue.title }} ${{ github.event.issue.body }}
+    questions: |
+      kind:
+        type: choice
+        instructions: What kind of issue is this?
+        criteria:
+          bug: Something that should work is broken.
+          feature: A request for new behaviour.
+          question: The reporter is asking how to do something.
+```
+
+| input | |
+|---|---|
+| `state` / `state-file` | the thing to decide about, JSON or plain text — exactly one |
+| `workflow` | a built-in, above |
+| `questions` / `questions-file` | your own questions, YAML or JSON; names must not clash with the chosen workflow's |
+| `model-release` | release the model files come from (default `model-v1`) |
+
+Outputs: `result` (JSON — `{"workflow", "decisions": {name: {answer, confidence, type, mode, distribution}}}`) and `result-file`. Each run also writes a table to the job summary.
+
+The first run downloads ~1.2 GB of ONNX files, each checked against [`action/SHA256SUMS`](action/SHA256SUMS) from the same tag as the code, then caches them (GitHub evicts caches unused for 7 days). A call took 2.6 s on a standard `ubuntu-latest` runner. Linux and macOS runners.
+
+The PyTorch checkpoint is on the same release as `jevlite-fp16.pt` (298 MB, six pieces; join with `cat`, instructions in the release notes).
 
 ---
 
